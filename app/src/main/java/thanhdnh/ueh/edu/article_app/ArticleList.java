@@ -1,25 +1,26 @@
 package thanhdnh.ueh.edu.article_app;
 
-import com.google.gson.annotations.Expose;
-import com.google.gson.annotations.SerializedName;
-
 import java.util.ArrayList;
 
 public class ArticleList {
+    private static ArrayList<User> userList = new ArrayList<>();
 
-  @SerializedName("articles")
-  @Expose
-  private ArrayList<Article> articles;
+    public static ArrayList<User> getInstance() {
+        return userList;
+    }
 
-  public ArticleList(ArrayList<Article> articles) {
-    this.setArticles(articles);
-  }
+    public static void setInstance(ArrayList<User> list) {
+        userList = list;
+    }
 
-  public ArrayList<Article> getArticles() {
-    return articles;
-  }
-
-  public void setArticles(ArrayList<Article> articles) {
-    this.articles = articles;
-  }
+    public static User getUserById(String id) {
+        if (userList != null) {
+            for (User u : userList) {
+                if (u.getId().equals(id)) {
+                    return u;
+                }
+            }
+        }
+        return null;
+    }
 }

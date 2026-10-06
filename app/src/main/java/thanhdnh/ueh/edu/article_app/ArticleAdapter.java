@@ -1,6 +1,9 @@
 package thanhdnh.ueh.edu.article_app;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -8,55 +11,89 @@ import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.squareup.picasso.Picasso;
-
+import java.io.File;
 import java.util.ArrayList;
 
 public class ArticleAdapter extends BaseAdapter {
-  private ArrayList<Article> article_list;
   private Context context;
+  private ArrayList<User> userList;
+  private Handler mainHandler = new Handler(Looper.getMainLooper());
 
-  public ArticleAdapter(ArrayList<Article> article_list, Context context) {
-    this.article_list = article_list;
+  public ArticleAdapter(Context context, ArrayList<User> userList) {
     this.context = context;
+    this.userList = userList;
   }
 
   @Override
   public int getCount() {
-    return article_list.size();
+    return userList != null ? userList.size() : 0;
   }
 
   @Override
   public Object getItem(int position) {
-    return article_list.get(position);
+    return userList.get(position);
   }
 
   @Override
   public long getItemId(int position) {
-    return article_list.get(position).getArticle_id();
+    try {
+      return Long.parseLong(userList.get(position).getId());
+    } catch (Exception e) {
+      return position;
+    }
   }
 
   @Override
   public View getView(int position, View convertView, ViewGroup parent) {
-    final MyView dataitem;
-    LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+    ViewHolder holder;
     if (convertView == null) {
-      dataitem = new MyView();
-      convertView = inflater.inflate(R.layout.article_disp_tpl, null);
-      dataitem.iv_photo = convertView.findViewById(R.id.imv_photo);
-      dataitem.tv_caption = convertView.findViewById(R.id.tv_title);
-      convertView.setTag(dataitem);
+      convertView = LayoutInflater.from(context).inflate(R.layout.article_disp_tpl, parent, false);
+      holder = new ViewHolder();
+      holder.imageView = convertView.findViewById(R.id.imv_photo);
+      holder.textView = convertView.findViewById(R.id.tv_title);
+      convertView.setTag(holder);
     } else {
-      dataitem = (MyView) convertView.getTag();
+      holder = (ViewHolder) convertView.getTag();
     }
 
-    Picasso.get().load(article_list.get(position).getArticle_image()).resize(300, 400).centerCrop().into(dataitem.iv_photo);
-    dataitem.tv_caption.setText(article_list.get(position).getArticle_title());
+    User user = userList.get(position);
+
+    if (holder.textView != null) {
+      holder.textView.setText(user.getUname());
+    }
+
+    if (holder.imageView != null) {
+      holder.imageView.setImageDrawable(null);
+      String imgUrl = user.getUrl_profile();
+      holder.imageView.setTag(imgUrl); // Gắn cờ kiểm tra ô hiển thị
+
+      if (imgUrl != null && !imgUrl.isEmpty()) {
+        new Thread(() -> {
+          try {
+            File file = Downloader.downloadFile(imgUrl, context.getCacheDir());
+            if (file != null) {
+              // Nén nhỏ về cỡ 300x300 vừa vặn với ô GridView 150dp
+              Bitmap bitmap = Downloader.decodeSampledBitmap(file, 300, 300);
+              if (bitmap != null) {
+                mainHandler.post(() -> {
+                  if (imgUrl.equals(holder.imageView.getTag())) {
+                    holder.imageView.setImageBitmap(bitmap);
+                  }
+                });
+              }
+            }
+          } catch (Throwable ignored) {
+            // Bắt mọi lỗi ngoại lệ và thiếu RAM, bảo đảm app không bao giờ văng
+          }
+        }).start();
+      }
+    }
+
     return convertView;
   }
 
-  private static class MyView {
-    ImageView iv_photo;
-    TextView tv_caption;
+  static class ViewHolder {
+    ImageView imageView;
+    TextView textView;
   }
 }
